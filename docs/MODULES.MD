@@ -50,12 +50,18 @@ Phase 5 — Reporting + ERP Modules (7–10 days)
 
 **Component library:** ShadCN preset `b2Cin5UWY` (installed in TASKS.md Step 4) includes:
 - Layout: Card, Separator, Sidebar, NavigationMenu
-- Input: Button, Input, Textarea, Select, Checkbox, RadioGroup, Switch, Combo Box
-- Display: Badge, Avatar, Alert, Progress, Skeleton, Spinner
+- Input: Button, Input, Textarea, Select, Checkbox, RadioGroup, Switch, Combo Box, Command
+- Display: Badge, Avatar, Alert, Progress, Skeleton, Spinner, Empty
 - Feedback: Tooltip, Popover, AlertDialog, Dialog, Sheet
 - Charts: Recharts (area, bar, line, pie, scatter, radar)
 - Data: Table, Tabs, Accordion, Pagination, Breadcrumb
-- Navigation: Dropdown Menu
+- Navigation: Dropdown Menu, Context Menu
+
+**Component Usage Guidelines:**
+
+- **Empty** — Display when content is expected but currently empty (e.g., empty inbox, no tasks, no deals). Provides better UX than blank space.
+- **Command** — Accessible search & command palette for complex searches (tool search, slash commands, complex queries). Primary use: agent tool discovery, task filtering, shortcut navigation.
+- **Context Menu** — Right-click menu for additional actions on UI elements (deals, tasks, contacts). Surface related tools without cluttering the primary interface.
 
 **Rule:** If a component need isn't covered by ShadCN preset, DON'T build custom. Instead:
 1. Check ShadCN docs (https://ui.shadcn.com/)
