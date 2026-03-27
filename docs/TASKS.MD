@@ -24,7 +24,7 @@
 **Phase 0 Tasks:**
 
 - [ ] **Create Supabase projects (BOTH):**
-  - [ ] `gdt-staging` project (with pgvector enabled)
+  - [x] `gdt-staging` project (with pgvector enabled)
   - [ ] `gdt-production` project (with pgvector enabled)
   - [ ] In each: `CREATE EXTENSION vector;` in SQL editor
   - [ ] Save connection strings for both
@@ -34,10 +34,10 @@
   - [ ] Vercel auto-creates Preview environment from `develop` branch
   - [ ] Vercel auto-creates Production environment from `main` branch
   
-- [ ] **Create Railway projects (BOTH):**
-  - [ ] `gdt-agents-staging` (for agents runtime on develop)
-  - [ ] `gdt-agents-production` (for agents runtime on main)
-  - [ ] Both linked to same repo, but configured for different branches
+- [x] **Create Railway projects (BOTH):**
+  - [x] `gdt-agents-staging` (for agents runtime on develop)
+  - [x] `gdt-agents-production` (for agents runtime on main)
+  - [x] Both linked to same repo, but configured for different branches
   
 - [ ] **Generate API Keys:**
   - [ ] OpenRouter API key (https://openrouter.ai, grants access to 100+ models)
@@ -1203,27 +1203,278 @@ pnpm dev      # Start dev server (should NOT error)
 
 > **Stop the dev server** (Ctrl+C) — you're not running locally, all testing happens in Vercel preview.
 
-### Step 15: Create Initial Branches
+### Step 15: Create Initial Branches & GitHub Setup
 
-**Goal:** Set up branch protection and environments
+**Goal:** Set up the complete Git Flow model with two permanent branches, branch protection, GitHub Environments, and environment variable configuration.
+
+**Reference:** See [BRANCHING.md](/docs/BRANCHING.md) for the complete branching strategy.
+
+---
+
+**Substep 15a: Create and Push develop Branch**
+
+From repo root (`gdt/`):
 
 ```bash
 # Create develop branch locally
 git checkout -b develop
 
-# Push develop to remote
+# Push develop to remote (this creates it on GitHub)
 git push -u origin develop
-
-# Now go to GitHub https://github.com/YOUR_USERNAME/gdt/settings/branches
-# 1. Add branch protection rule:
-#    - Branch name: main
-#    - Require pull request reviews before merging: YES (1 required)
-#    - Include administrators: YES
-# 2. Add branch protection rule:
-#    - Branch name: develop
-#    - Require pull request reviews before merging: YES (1 required)
-#    - Require status checks to pass: YES
+git branch -a
+# Should show:
+#   * develop
+#     main
 ```
+
+---
+
+**Substep 15b: Configure Branch Protection Rules**
+
+Go to GitHub repository → Settings → Branches
+
+**Rule 1: Protect main (production)**
+
+1. Click "Add rule"
+2. Branch name pattern: `main`
+3. Check: ✅ Require a pull request before merging
+   - Required approving reviews: `1`
+   - Dismiss stale pull request approvals when new commits are pushed: ✅
+   - Include administrators: ✅
+4. Check: ✅ Require status checks to pass before merging
+   - Status checks: `build` (once GitHub Actions are set up)
+5. Check: ✅ Require branches to be up to date before merging
+6. Check: ✅ Include administrators in restrictions
+7. Authorization: ✅ Allow auto-merge
+8. Check: ✅ Automatically delete head branches
+9. Click "Create"
+
+**Rule 2: Protect develop (staging)**
+
+1. Click "Add rule"
+2. Branch name pattern: `develop`
+3. Check: ✅ Require a pull request before merging
+   - Required approving reviews: `1`
+   - Dismiss stale pull request approvals when new commits are pushed: ✅
+4. Check: ✅ Require status checks to pass before merging
+5. Check: ✅ Require branches to be up to date before merging
+6. Authorization: ✅ Allow auto-merge
+7. Check: ✅ Automatically delete head branches
+8. Click "Create"
+
+**Expected:**
+```
+Two branch protection rules:
+  ✓ main
+  ✓ develop
+```
+
+---
+
+**Substep 15c: Create GitHub Environments**
+
+Go to GitHub repository → Settings → Environments
+
+**Environment 1: `preview` (for develop branch)**
+
+1. Click "New environment"
+2. Name: `preview`
+3. Click "Configure environment"
+4. Deployment branches: 
+   - Check "Selected branches"
+   - Add rule: `develop`
+5. Environment variables: Add these (replace with actual values)
+   ```
+   NEXT_PUBLIC_SUPABASE_URL        = https://your-staging-project.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY   = eyJhbGc... (from Supabase → Settings → API Keys → anon key)
+   SUPABASE_SERVICE_ROLE_KEY       = eyJhbGc... (from Supabase → Settings → API Keys → service_role key)
+   RAILWAY_AGENT_URL               = https://staging-agents.railway.app (or actual Railway URL)
+   OPENROUTER_API_KEY              = sk-or-... (from https://openrouter.ai/keys)
+   ZOHO_CLIENT_ID                  = (staging Zoho OAuth client ID)
+   ZOHO_CLIENT_SECRET              = (staging Zoho OAuth client secret)
+   ```
+6. Click "Save environment"
+
+**Environment 2: `production` (for main branch)**
+
+1. Click "New environment"
+2. Name: `production`
+3. Click "Configure environment"
+4. Deployment branches:
+   - Check "Selected branches"
+   - Add rule: `main`
+5. **Deployment protection rules:**
+   - Check: ✅ Required reviewers
+   - Add reviewers: (add your GitHub username or a colleague)
+   - Check: ✅ Prevent environment secrets when a pull request is opened from a public fork
+6. Environment variables: Add these (replace with actual values)
+   ```
+   NEXT_PUBLIC_SUPABASE_URL        = https://your-production-project.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY   = eyJhbGc... (from production Supabase → Settings → API Keys)
+   SUPABASE_SERVICE_ROLE_KEY       = eyJhbGc... (from production Supabase → Settings → API Keys)
+   RAILWAY_AGENT_URL               = https://agents.railway.app (or actual Railway production URL)
+   OPENROUTER_API_KEY              = sk-or-... (from https://openrouter.ai/keys)
+   ZOHO_CLIENT_ID                  = (production Zoho OAuth client ID)
+   ZOHO_CLIENT_SECRET              = (production Zoho OAuth client secret)
+   ```
+7. Click "Save environment"
+
+**Expected:**
+```
+Environments:
+  ✓ preview    (develop branch)
+  ✓ production (main branch)
+```
+
+---
+
+**Substep 15d: Configure Vercel for Multi-Branch Deployment**
+
+Go to Vercel dashboard → Project Settings → Git → Production Branch
+
+1. **Production branch:** Set to `main`
+2. **Preview branches:** Ensure `develop` is included (auto-preview environments for all PRs)
+
+**Expected:**
+```
+Vercel will now:
+  ✓ Deploy develop → preview-gdt.vercel.app
+  ✓ Deploy main → gdt.vercel.app (production)
+  ✓ Auto-preview all feature/* branches
+```
+
+---
+
+**Substep 15e: Configure Railway for Multi-Branch Deployment**
+
+In Railway dashboard for `gdt-agents-staging` project:
+
+1. Go to project → Services → Connect GitHub repo
+2. Settings → Deploy on Push: ✅ Enabled
+3. Branch: `develop`
+4. Environment variables:
+   ```
+   OPENROUTER_API_KEY    = sk-or-... (staging key)
+   SUPABASE_URL          = https://your-staging-project.supabase.co
+   SUPABASE_SERVICE_ROLE = eyJhbGc... (staging service role)
+   ```
+
+In Railway dashboard for `gdt-agents-production` project:
+
+1. Go to project → Services → Connect GitHub repo
+2. Settings → Deploy on Push: ✅ Enabled
+3. Branch: `main`
+4. Environment variables:
+   ```
+   OPENROUTER_API_KEY    = sk-or-... (production key)
+   SUPABASE_URL          = https://your-production-project.supabase.co
+   SUPABASE_SERVICE_ROLE = eyJhbGc... (production service role)
+   ```
+
+**Expected:**
+```
+Railway will now:
+  ✓ Deploy develop → staging agent runtime
+  ✓ Deploy main → production agent runtime
+```
+
+---
+
+**Substep 15f: Create Required Status Checks (GitHub Actions)**
+
+Status checks enforce that code builds before merging. Placeholder setup (detailed CI/CD in Phase 2):
+
+1. Go to repository → Settings → Branches
+2. Edit `main` protection rule → Require status checks to pass:
+   - Check: ✅ Require status checks to pass before merging
+   - Status checks: `build`, `test` (these will appear once GitHub Actions run)
+3. Edit `develop` protection rule → Same as above
+4. Click "Save"
+
+> **Note:** Actual GitHub Actions workflows (lint, test, build) are scaffolded in Phase 2. For now, leave this empty — Vercel will auto-add checks.
+
+**Expected:**
+```
+Status checks (visible after first PR):
+  ✓ Vercel Production (for main)
+  ✓ Vercel Preview (for develop)
+```
+
+---
+
+**Substep 15g: Verify Complete GitHub Setup**
+
+Checklist:
+
+- ✅ `main` branch exists with protection rules
+- ✅ `develop` branch exists with protection rules
+- ✅ `preview` environment created (develop branch)
+- ✅ `production` environment created (main branch)
+- ✅ Both environments have all required secrets
+- ✅ Vercel Preview URLs auto-generate for PRs
+- ✅ Railway staging/production auto-deploy on branch push
+
+---
+
+**Substep 15h: Test the Setup**
+
+```bash
+# 1. Create a test feature branch
+git checkout -b feature/test-branch
+git commit --allow-empty -m "test: verify branch workflow"
+git push origin feature/test-branch
+
+# 2. Go to GitHub → Pull requests → create PR (feature/test-branch → develop)
+# 3. Verify:
+#    ✓ Vercel auto-creates preview environment
+#    ✓ PR locks until review approved
+#    ✓ Status checks appear (Vercel, build, etc.)
+#    ✓ Merge button only active when all checks pass
+
+# 4. After approving PR:
+git checkout develop
+git pull origin develop
+
+# 5. Create another test PR (develop → main)
+# Verify:
+#    ✓ Requires 1 approval
+#    ✓ Vercel shows Production deployment ready
+#    ✓ Railway shows staging agents deploying
+```
+
+---
+
+**Complete GitHub Setup Summary:**
+
+| Item | Staging (develop) | Production (main) |
+|---|---|---|
+| Branch protection | ✓ 1 review required | ✓ 1 review required + admin oversight |
+| GitHub Environment | `preview` | `production` |
+| Deployment target | Vercel Preview | Vercel Production |
+| Agent runtime | Railway staging | Railway production |
+| Secrets strategy | Staging API keys only | Production API keys only |
+| Auto-delete branches | ✓ After merge | ✓ After merge |
+
+---
+
+**Important Branch Model (Reference BRANCHING.md):**
+
+Once setup is complete, all future development uses this branch model:
+
+```
+Permanent Branches:
+  main (production) ← Only releases/hotfixes merge here
+  develop (staging) ← Feature branches merge here
+
+Dynamic Branches (created & deleted per task):
+  feature/GDT-{id}-{description}  (new capability)
+  bugfix/GDT-{id}-{description}   (bug fix)
+  chore/GDT-{id}-{description}    (refactor, deps, docs)
+  hotfix/GDT-{id}-{description}   (critical production fix)
+  release/v{major}.{minor}.{patch} (release integration)
+```
+
+See [BRANCHING.md](/docs/BRANCHING.md) for full commit message conventions, PR checklist, and workflow examples.
 
 ### Step 16: Configure PWA (Progressive Web App for Mobile)
 
